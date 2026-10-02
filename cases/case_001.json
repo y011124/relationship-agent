@@ -1,0 +1,8 @@
+{
+  "case_id": "case_001",
+  "language": "zh",
+  "user_message": "我和伴侣最近每天都会聊天，但这三天他的回复明显变慢，内容也变短。我不知道他只是工作忙，还是对我失去兴趣。我想问清楚，但怕显得在逼他。",
+  "known_facts": [],
+  "historical_memory": [],
+  "real_feedback": []
+}

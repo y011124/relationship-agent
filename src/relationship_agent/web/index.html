@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ylune · Relationship Agent</title><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<aside class="sidebar">
+  <a class="brand" href="/" aria-label="ylune home"><span class="mark">y.</span><span class="brand-name">ylune<span class="brand-sub">RELATIONSHIP AGENT</span></span></a>
+  <button class="new-button" id="new-session"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/><rect x="2.5" y="2.5" width="19" height="19" rx="6"/></svg><span data-i="newSession">新对话</span></button>
+  <p class="nav-label" data-i="history">最近聊天</p><nav id="sessions" aria-label="最近聊天"></nav>
+  <div class="sidebar-foot"><span class="local-dot"></span><span data-i="local">会话保存在本机</span></div>
+</aside>
+<main>
+  <header><span class="eyebrow" data-i="workspace">A LITTLE SPACE TO THINK</span><div class="header-actions"><button id="language" class="quiet">English</button><button id="settings" class="quiet" data-i="settings">模型设置</button><span id="mode-badge" class="badge"></span></div></header>
+  <section class="intro"><p class="overline" data-i="overline">给复杂的感受，一点清晰的空间</p><h1 data-i="headline">先理清，再向前。</h1><p class="intro-copy" data-i="intro">从发生了什么开始，探索不同解释，练习你想说的话。</p></section>
+  <div id="demo-notice" class="notice conversation-only" data-i="demoNotice">当前为演示模式：使用有限的预设样例，不会调用大模型。要分析你自己的问题，请在模型设置中切换到真实模型。</div>
+  <section class="chat-panel panel conversation-only"><div class="section-top"><h2 data-i="chatTitle">和 Agent 聊聊</h2><span id="session-label" class="muted"></span></div>
+    <div id="chat-messages" class="chat-messages" aria-live="polite"><p class="muted" data-i="chatEmpty">你可以先说说现在最困扰你的是什么。</p></div>
+    <div class="chat-composer"><textarea id="chat-input" maxlength="6000" data-placeholder="chatPlaceholder" placeholder="把你的感受说出来……"></textarea><div class="chat-actions"><button id="example" class="text-button" data-i="example">试试一个示例 ↗</button><button id="chat-send" class="primary" data-i="send">发送 →</button></div></div>
+  </section>
+  <p id="status" role="status" aria-live="polite" class="conversation-only"></p>
+  <div id="progress" class="progress conversation-only" aria-label="执行进度"></div>
+  <div id="run-history" class="run-history conversation-only"></div>
+  <section id="report" aria-label="分析结果" class="conversation-only"></section>
+  <details id="trace-panel" class="trace conversation-only" hidden><summary data-i="trace">查看执行记录与原始报告</summary><ol id="trace-list"></ol><button id="export" class="quiet" data-i="export">下载本次报告</button></details>
+  <footer data-i="footer">想法可以被修正。练习中的对话，不会成为现实中的证据。</footer>
+</main>
+<dialog id="settings-dialog"><form id="settings-form"><div class="section-top"><h2 data-i="settings">模型设置</h2><button type="button" id="close-settings" class="quiet" aria-label="Close">×</button></div>
+  <label><span data-i="mode">运行模式</span><select id="config-mode"><option value="mock" data-i="demoOption">演示（不调用模型）</option><option value="api" data-i="apiOption">真实模型 API</option></select></label>
+  <div id="api-fields"><label><span data-i="provider">服务商预设</span><select id="provider-preset"><option value="glm">GLM · 智谱</option><option value="openai">GPT · OpenAI</option><option value="custom">自定义 / Custom</option></select></label><label><span data-i="protocol">接口格式</span><select id="protocol"><option value="chat-completions">Chat Completions</option><option value="anthropic">Anthropic Messages</option></select></label>
+  <label><span data-i="model">模型名称</span><input id="model" value="glm-5.3" maxlength="150" autocomplete="off"></label>
+  <label>Base URL<input id="base-url" type="url" value="https://open.bigmodel.cn/api/paas/v4" autocomplete="off"></label>
+  <label>API Key<input id="api-key" type="password" autocomplete="off" maxlength="2000"></label><p class="muted" id="key-state"></p><p class="muted" data-i="keyHelp">Key 只保存在本次服务进程内，重启后需要重新设置。更换地址时必须重新填写。分析内容会发送给你选择的服务商。</p></div>
+  <details><summary data-i="academicSettings">学术搜索设置</summary>
+    <p class="muted" data-i="academicHelp">Google Scholar 通过 SerpAPI 搜索，需单独的 Key。其他两项可尝试无 Key 访问。搜索仅发送提炼的主题词；搜索服务可能记录查询并按其套餐计费。Key 留空沿用，仅保存在当前服务进程。</p>
+    <label>Google Scholar · SerpAPI Key<input id="serpapi-key" type="password" autocomplete="off" maxlength="2000"></label>
+    <label>Semantic Scholar API Key<input id="semantic-key" type="password" autocomplete="off" maxlength="2000"></label>
+    <label>OpenAlex API Key<input id="openalex-key" type="password" autocomplete="off" maxlength="2000"></label>
+    <p id="academic-state" class="muted"></p>
+  </details>
+  <p id="settings-error" role="alert"></p><button type="submit" class="primary" data-i="saveSettings">保存设置</button>
+</form></dialog>
+</body></html>
