@@ -1,5 +1,7 @@
 # Architecture / 架构与设计取舍
 
+> 本页描述旧单用户引擎。当前 Persona AI 的账号、人物记忆、数据库队列与部署架构请看 [persona-architecture.md](persona-architecture.md)。
+
 ## 产品目标
 
 给关系沟通中的不确定性提供可追溯的思考过程。系统不能观察对方内心；它帮助区分陈述、猜测和行动选择，并根据新陈述修正推测。

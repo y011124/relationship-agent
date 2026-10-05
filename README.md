@@ -1,204 +1,109 @@
-# ylune · Relationship Agent
+# Persona AI
 
-[English](docs/README.en.md) · [架构](docs/architecture.md) · [验证记录](docs/verification.md)
+**记得你在意的人和事。** 一个带人物记忆的关系交流助手：创建人物档案，持续聊天，确认相处经历，修正记忆；需要时再检索研究来源或练习沟通。
 
-一个独立的本地关系沟通应用：先与 Agent 多轮聊天；需要梳理时，再探索多个解释、比较行动、练习对话，并用真实反馈修正判断。中英文网页与 CLI 共用一个可恢复的 Harness。
+[English](docs/README.en.md) · [产品与架构](docs/persona-architecture.md) · [部署](docs/deployment.md) · [验收与状态](docs/release-status.md) · [评测](docs/evaluation.md)
 
-**状态：本地单用户 MVP。** 默认演示模式使用有限的确定性样例；要分析任意真实问题，请配置 API。工程测试通过不等于情感建议质量通过。
+**当前状态：邀请制 Beta 的本地实现。公网部署、真实模型质量评审和真实用户测评尚未完成。** 没有把离线 Mock 通过率当作模型效果或用户满意度。没有自动花费模型额度。
 
-## 最快开始
-
-页面现在只提供一个聊天入口。每次发送消息先识别意图，再选择聊天、知识检索、关系分析或已有判断的反馈更新，全部结果保留在同一会话。真实 API 模式由模型结合最近对话识别意图；演示模式使用有限规则。路由结果也保存到检查点，恢复时不会重复已完成的识别。真实模式每条消息增加一次简短路由调用，仍计入本机请求上限。
-
-第一版知识库包含 4 张项目编写的入门卡片：关系不确定性、沟通、依恋、信号与信息不对称；使用关键词检索。用户明确要求“论文、文献、证据来源”等内容时，系统会把主题词路由到学术证据工作流，并行尝试 Google Scholar（通过 SerpAPI）、Semantic Scholar 和 OpenAlex。它用于验证 RAG 流程，不应被当作经过专家审查的心理学资料库。知识提问不会作为个人经历进入关系记忆；引用片段必须来自本次检索结果，未覆盖的问题会提示资料不足。
-
-### 学术证据搜索
-
-学术搜索不是直接抓取 Google Scholar 网页：Google Scholar 官方不提供批量访问接口，因此项目使用 SerpAPI 的 Google Scholar 适配器；Semantic Scholar 和 OpenAlex 使用各自的公开 API。Google Scholar 需要 `SERPAPI_API_KEY`，另外两个 Key 可选，留空时仍会尝试其允许的匿名请求。网页“模型设置 → 学术搜索设置”可以在当前服务进程内填写或更换这些 Key。
-
-搜索流程是：用户问题 → 意图识别为 `evidence` → 整理一条去除私人身份信息的英文检索词 → 三个服务并行搜索 → 按 DOI/标题去重 → 只把摘要或搜索摘要作为有明确标记的证据片段交给知识回答阶段 → 校验引用并展示原文链接。搜索摘要不是论文全文，相关性也不等于因果证明；服务商可能记录查询并按其套餐计费。Key 不会写入数据库、报告或模型上下文。
-
-如需从终端配置：
+## 运行
 
 ```bash
-export SERPAPI_API_KEY="..."
-export SEMANTIC_SCHOLAR_API_KEY="..."  # 可选
-export OPENALEX_API_KEY="..."           # 可选
-```
-
-服务重启后需要重新配置；当前实现把 Key 保存在服务进程内存中，不落盘。
-
-在项目目录执行（已有 Python 3.10+ 即可，不需要安装前端工具链）：
-
-```bash
-python3 web_app.py
-```
-
-在你的电脑上，也可以使用已经配置的解释器：
-
-```bash
-cd /path/to/relationship-agent
+python3 -m venv .venv
+.venv/bin/pip install -e '.[beta,mcp,test]'
 .venv/bin/python web_app.py
 ```
 
-打开 [本地页面](http://127.0.0.1:8765)。在“和 Agent 聊聊”输入并发送即可。可以说“只想聊聊”、问“什么是依恋”，或说“帮我分析这件事”；系统选择处理流程，分析报告可在聊天中打开。当前已启动版本使用端口 8766。在 PyCharm 直接运行 `web_app.py`，然后打开终端打印的地址。
+打开 **http://127.0.0.1:8770/**。本地默认使用明显标注的演示模式。点击“创建账号”，使用自己的用户名和至少12位密码；本地未设置邀请码时无需填写。使用昵称即可，建议先用虚构数据体验。
 
-页面提供多轮聊天、会话历史、阶段进度、分析卡片、真实反馈、执行记录和报告下载。点击右上角 English 切换界面；新会话使用所选语言，旧报告保留原语言。Agent 不会替用户向他人发送消息。
+已有本地 QA 账号仅供演示，不用于真实私人内容或公网环境。公网使用独立的 PostgreSQL 数据库，不上传本地 memory 目录。
 
-## 使用真实模型与更换 Key
+在 PyCharm 中运行 `web_app.py` 或 `persona_app.py` 均启动新版。旧版本保留在 `legacy_web_app.py`，其数据库不自动迁移到任何新账号。
 
-网页右上角“模型设置”中：
+## 真实模型
 
-1. 选择“真实模型 API”。
-2. 选择“GLM · 智谱”或“GPT · OpenAI”预设，再填写你有权使用的对应 API Key。GLM-5.3 推荐 Chat Completions；GPT 预设填入 `gpt-4.1-mini` 和 `https://api.openai.com/v1`。模型 ID 与地址可手动修改。
-3. 保存，建立真实模型会话，再输入问题。
-4. 更换 Key 时重新填写即可；留空时只会沿用本次服务进程内同一地址、同一协议已输入的 Key。GPT 需要单独的 OpenAI API Key；ChatGPT 网页或 Codex 登录不等于 API 凭据。
-
-Key 仅驻留服务进程内，不写入数据库、报告、浏览器存储或 Git。服务重启后需要重填，或用终端环境变量启动。模型会收到当前输入、同一会话内有界的历史陈述和相关判断。选中的服务商适用其自己的数据政策。切换服务商不会重置本次服务的请求次数上限。
-
-**聊天记录如何保存：**网页中的每条用户输入和成功生成的回复，以及分析、反馈与执行记录，保存在本机 `memory/v2/sessions.sqlite3`；现在没有自动过期、账号同步或网页删除功能。失败的请求会留下输入，但不会凭空生成回复。重新打开网页可以找到旧会话；“新对话”会建立独立会话。每次向模型请求时，只选取当前会话最近最多 12 组已完成聊天（总长度上限 10000 字符），另按任务检索最近最多 8 条现实观察。因此，**保存全部历史不等于模型每次都会读完全部历史**。备份或删除该数据库文件会影响所有本机会话。
-
-为控制测试消耗，每次启动服务默认最多向真实模型发起 **20 次请求尝试**（含重试和格式修复）；网页右上角显示本次服务剩余次数。GLM-5.3 默认使用 `low` 思考强度，聊天单次输出最多请求 768 tokens。达到本地上限会停止调用；这个数字不是智谱账户余额，也不能限制其他应用对同一 Key 的使用。可在启动前设置 `RELATIONSHIP_API_REQUEST_LIMIT` 调整本地上限。真实模型的完整分析通常需要四个阶段调用。
-
-| 服务协议 | Base URL 示例 | 项目实际请求 |
-| --- | --- | --- |
-| GLM Anthropic 兼容 | `https://open.bigmodel.cn/api/anthropic` | `/v1/messages` |
-| GLM Chat Completions | `https://open.bigmodel.cn/api/paas/v4` | `/chat/completions` |
-| OpenAI Chat Completions | `https://api.openai.com/v1` | `/chat/completions` |
-| 其他兼容服务 | 服务商提供的 API 根地址 | 根据所选协议拼接 |
-
-模型名称默认沿用 `glm-5.3`；你的 Key 是否能访问该模型由服务商账号决定。选择其他模型需同时匹配该服务商的协议、地址、模型 ID 与 Key，不支持任意厂商的专有 API。
-
-在 macOS zsh 中可隐藏输入密钥：
+普通用户页面没有 API 设置。管理员在本机隐藏输入 Key：
 
 ```bash
-read -rs "GLM_API_KEY?粘贴你的 API Key，然后回车："
-export GLM_API_KEY
-echo
-.venv/bin/python web_app.py --mode api --model glm-5.3
+.venv/bin/python scripts/configure_model.py
+.venv/bin/python persona_app.py
 ```
 
-另一个协议或 Key 环境变量：
+配置工具写入 Git 忽略的 `.env`，权限为0600，不打印 Key，不调用模型。GLM、OpenAI 或其他兼容服务使用对应的模型、Base URL、协议和 Key。可以重复运行更换 Key。也可以使用 `zsh run-api.sh` 临时输入 GLM Key，它只留在进程环境中。
+
+上线前必须在 `.env` / 托管平台填入当前服务商价格与全站预算，使用自己有权用于该产品的凭据。默认每用户每天40次、全站每天200次模型 HTTP 尝试，还受每日预算限制；所有重试均计数，跨进程和重启不重置。每条消息通常包含路由和回答两个模型阶段，复杂分析需要更多调用。预算是本应用的保守预约额度，**不是服务商账户余额或账单保证**；搜索服务可能另行收费。
+
+## 用户闭环
+
+1. 登录，点击左栏紫色 `＋ 添加人物`，填写昵称和可选资料。
+2. 点击“聊聊这个人”，或在聊天中提到其已登记昵称／别名。
+3. 助手先回应当前输入，再按意图调用聊天、分析、知识或研究工作流。
+4. 明确的人物陈述可形成待确认卡片；确认前不用于跨会话记忆。用户可把它归为经历、感受或印象。
+5. 新对话检索同一账号下该人物的已确认记录。多人或代词指代不清时先澄清。
+6. 用户纠正记忆后，旧上下文失效。删除人物或事件会清理涉及该人物的相关对话，避免旧结果重新成为上下文；操作前明确提示。
+7. 用户可评价回复、导出数据、删除对话和注销账号。
+
+## 工程范围与取舍
+
+- 一个主 Agent、固定且可恢复的工作流，不声称多个自主 Agent 已实现。
+- 人物识别使用已登记昵称／别名及用户选择；陌生人物不会被悄悄创建。
+- 人物检索先做账号和人物过滤，再用词项相关度与时间排序；**目前不是向量检索**。
+- 人物资料、用户经历、用户感受／印象、模型推测和演练保持不同来源；星座仅作为资料，不用于行为预测。
+- SQLAlchemy 支持 SQLite 本地开发和 PostgreSQL 部署，生产配置强制 PostgreSQL、HTTPS、邀请码与真实模型配置。
+- 不透明 HttpOnly 会话 Cookie、哈希凭据、Origin/CSRF 检查、登录限流；每个 API 对资源归属再次校验。
+- 持久任务队列、租约、检查点、幂等提交。不同会话可并行，同一会话只允许一个活跃任务。进程崩溃后租约过期的任务显式失败，用户可恢复。
+- 删除/编辑时阻止与运行中的任务竞态。修改记忆后排除旧上下文是保守实现，会暂时减少近期聊天连续性。
+- 学术检索保留 Google Scholar/SerpAPI、Semantic Scholar、OpenAlex 适配，引用校验沿用现有实现；已知人物名在外发搜索前再次清理。没有虚构“已读全文”。
+- 中文/英文提示与 UI；小范围规则预检高风险输入，所有模型分支保留安全提示。规则不能覆盖所有表达，必须补充真实模型评测。
+- 按人物限定的只读 MCP、加密备份/恢复、脱敏统计、明确同意后才可通过反馈审阅对话。
+
+## 测试和评测
 
 ```bash
-.venv/bin/python web_app.py --mode api \
-  --protocol chat-completions \
-  --base-url https://open.bigmodel.cn/api/paas/v4 \
-  --model glm-5.3 --api-key-env GLM_API_KEY
+.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v
+.venv/bin/python evals/persona_eval.py
 ```
 
-也可以直接使用项目内的启动脚本；它固定使用 GLM-5.3、Chat Completions 和上述 Base URL，并在终端隐藏读取 Key：
+40个中英文多轮案例，比较有／无人物记忆；默认全部Mock，不花模型额度。真实模型小额联调示例：
 
 ```bash
-zsh run-api.sh
+.venv/bin/python evals/persona_eval.py --mode api --limit 1 --max-calls 8 --output outputs/live-persona-eval.json
 ```
 
-脚本默认使用 8767 端口；如需改端口可先设置 `RELATIONSHIP_PORT=8766`。Key 仍只保存在本次服务进程内。
+调用上限覆盖整个进程、两种变体、路由与修复尝试。达到上限会记录失败而不是无限重试。阅读实际回复、填写人工评分后才可发布质量结论。不要提交真实用户输出。
 
-环境变量 `RELATIONSHIP_MODEL`、`RELATIONSHIP_BASE_URL`、`RELATIONSHIP_PROTOCOL` 也可设置；显式命令行参数优先。
+## MCP
 
-## CLI 闭环
-
-分析：
+仅由本机操作者主动启动、限定一个账号和一个人物，不对公网暴露：
 
 ```bash
-.venv/bin/python run_experiment.py --mode mock --stage full \
-  --message "分开之后，他一直没有联系我。我不知道是不是因为他有其他人了。" \
-  --memory-dir memory/v2 --output outputs/first.json
+.venv/bin/python -m relationship_agent.beta.mcp_server --username YOUR_USERNAME --person-id PERSON_ID
 ```
 
-记录**真实发生**的反馈（下面是演示样例）：
+工具：`get_person_profile`、`search_person_events`。它们只读，返回来源标签，不返回其他人物或未经确认的记忆。Host 会获得这个人物的数据，启用前需了解这一点。
 
-```bash
-.venv/bin/python run_experiment.py --mode mock --stage feedback \
-  --feedback "他说他有新伴侣了。" \
-  --report outputs/first.json --memory-dir memory/v2 \
-  --output outputs/feedback.json
-```
+## 部署与运营
 
-继续同一个会话，在下一条命令中加入报告中的 `--session-id SESSION_ID`。失败恢复使用 `--resume RUN_ID`，并保持原模型配置和记忆目录一致；Key 可以更换。已完成的阶段不会重新调用，完成的运行不会重复写入。
+提供 Dockerfile、PostgreSQL/Caddy Compose、Render Blueprint、PostgreSQL CI、数据库备份和恢复工具。它们是部署材料，**不等于已经上线**。域名、托管账号、模型配置、备份存储与真实用户反馈仍需实际接通并验收。
 
-`--stage extract` 只做抽取；`--stage interactive` 开启 CLI 交互。交互中使用 `/feedback 真实发生的情况` 和 `/quit`。默认 `full` 每轮四次模型阶段调用，反馈为一次；网络重试和结构修复可能增加请求数。Mock 不消耗额度。
-
-## Harness 做了什么
-
-- 版本化阶段指令与 JSON 合约：聊天；以及抽取 → 解释 → 行动 → 演练 → 反馈。
-- 事实候选必须引用当前输入原文；仍标为“用户陈述”，不宣称已独立核实。
-- 分开持久化原始陈述、模型判断、假设对话。检索不会把演练当现实。
-- 假设 ID、反馈引用、状态变化和原运行编号共同保留修改依据。
-- SQLite 事务保存会话、阶段检查点、报告和执行轨迹，支持失败续跑。
-- 当前消息最多 6000 字符；观察历史最多 8 条、6000 字符；聊天历史最多 12 组、10000 字符；单阶段 API 输入上限 24000 字符。这是字符预算，不是精确 token 预算。
-- Anthropic Messages 与 Chat Completions 两个真实适配器；有限重试与结构修复，失败不会偷偷切换成 Mock。
-- 真实 MCP stdio 接口，仅读取显式选择的一个会话。
-
-当前是**固定顺序、有边界的 Agent 工作流**。没有宣称模型自主选择工具、Multi-Agent 协作、训练或 KV Cache 优化已经实现。这样的范围便于说明、测量和复现。
-
-## MCP 集成（可选）
-
-核心网页不依赖 MCP。安装集成：
-
-```bash
-.venv/bin/pip install -e '.[mcp]'
-```
-
-供 MCP Host 启动的命令：
-
-```bash
-.venv/bin/python -m relationship_agent.mcp_server \
-  --memory-dir "$(pwd)/memory/v2" \
-  --session-id YOUR_SESSION_ID
-```
-
-这是 stdio 服务，单独启动后等待 Host 输入是正常的。工具为 `get_observations` 和 `get_hypotheses`。前者只返回用户陈述，后者明确返回推测。接入外部 Host 意味着允许它读取这个指定会话；项目不会自动向任何 Host 注册。
-
-SDK 使用已测试的 1.x 接口，约束 `mcp>=1.20,<2`；本机验证版本为 1.30.0。使用官方 SDK 处理协议握手与工具调用，不把普通函数注册表叫作 MCP。
-
-## 测试与评测
-
-```bash
-.venv/bin/python -m unittest discover -s tests -p test_harness.py -v
-.venv/bin/python tests/test_mcp_integration.py
-.venv/bin/python evals/run_eval.py --output outputs/evaluation.json
-```
-
-覆盖事实引用、假设不确定性、性别交换、跨会话隔离、Mock/API 隔离、反馈修正、重启恢复、失败续跑、重试次数、两种 API 协议、网页闭环与真实 MCP stdio 调用。
-
-`evals/cases.json` 含 8 个案例，每个附有人工审查标准。Mock 评测只检查工程约束，结果明确标记 `quality_status=NOT_EVALUATED`。同一套样例可用于真实模型评测（会消耗 API 额度）：
-
-```bash
-.venv/bin/python evals/run_eval.py --mode api --model glm-5.3 \
-  --limit 2 --output outputs/live-evaluation.json
-```
-
-必须阅读实际回答，检查贴题程度、事实/假设区分、沟通边界和性别一致性，再评价模型质量。机械地出现几个字段不能证明这些能力。
-
-## 数据与升级
-
-默认数据库为 `memory/v2/sessions.sqlite3`。这是本机明文数据库，可用常规文件备份；不适合多用户公网服务。网页只监听 127.0.0.1，并检查 Host、Origin 和本地请求令牌；这不是生产登录系统。
-
-v0.1 的 JSONL 文件和旧报告保留原样，**不会自动导入新版记忆**，因为旧 Mock 曾将预设内容混入事实。v0.2 在独立数据库中开始。不同会话独立；模拟与真实模型使用不同会话。
-
-`memory/`、`outputs/`、`.env`、`.venv/` 和 IDE 配置均被 Git 忽略。发布 GitHub 时不要手动添加私人报告或数据库。
+不要直接将旧本地 HTTP 服务暴露公网。不要提交 `.env`、私人数据库、备份、聊天记录或报告。部署详见 [deployment.md](docs/deployment.md)。
 
 ## 代码地图
 
 ```text
-web_app.py / run_experiment.py   启动入口
-src/relationship_agent/
-  server.py                     本地 HTTP 服务与后台任务
-  web/                          原生 HTML/CSS/JS，中英文界面
-  engine.py                     编排、检查点、反馈修正
-  storage.py                    SQLite 与有界现实记忆
-  schemas.py / skills.py        阶段合约、指令与验证
-  providers.py / demo.py         API 适配与明确标注的演示
-  mcp_server.py                 指定会话的只读 MCP 工具
-tests/                          工程与协议集成测试
-evals/                          案例、约束检查、人工审查标准
-docs/                           架构、英文说明、验证记录
+web_app.py / persona_app.py       新版入口
+src/relationship_agent/beta/
+  app.py                          FastAPI、登录与资源接口
+  auth.py                         密码哈希、会话、登录限流
+  database.py                     新数据库 schema v1 与事务
+  store.py                        用户隔离、人物与事件、引擎存储适配
+  service.py                      意图与人物上下文、队列、租约、预算
+  ops.py                          脱敏指标、加密备份恢复、反馈审阅
+  mcp_server.py                   账号+人物限定的只读 MCP
+src/relationship_agent/persona_web/  新版 HTML/CSS/JS
+src/relationship_agent/engine.py     复用的阶段执行与检查点
+src/relationship_agent/providers.py  多协议模型适配与逐请求计量钩子
+evals/persona_cases.py               40个合成多轮场景
 ```
 
-## 参考
-
-设计借鉴 [Generative Agents 论文](https://arxiv.org/abs/2304.03442) 的记忆与反馈思路；没有复现论文的虚拟小镇或人物模拟。项目实现独立，不依赖 ZScience 或团队代码。
-
-协议依据：[智谱 Chat Completions 文档](https://docs.bigmodel.cn/api-reference/模型-api/对话补全)、[智谱官方 Claude 兼容示例](https://github.com/MetaGLM/glm-cc/blob/main/glm-4.5-claude-code-integration.md)、[MCP Python SDK 1.x](https://github.com/modelcontextprotocol/python-sdk/tree/v1.x)。
+本项目独立开发，不依赖 ZScience。记忆分层受 Generative Agents 思路启发，没有复现其虚拟小镇。项目和 Character.AI 无关联。

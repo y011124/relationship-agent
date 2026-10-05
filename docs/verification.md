@@ -1,32 +1,23 @@
-# Verification record
+# Persona AI 0.3.0 验证记录
 
-Last local verification: 2026-09-22.
+验证日期：2026-10-05。旧版本记录单独保存在 [verification-legacy.md](verification-legacy.md)，其中的旧GLM联调不能当作本次Beta验证。
 
-## Passed
+## 本机通过
 
-- `python -m unittest discover -s tests -p test_harness.py -q`: 28 tests passed, including two-turn chat persistence, the local API request cap, and rejection of generated questions as hypothesis support.
-- `python tests/test_mcp_integration.py`: 1 MCP stdio integration test passed.
-- `python evals/run_eval.py --output outputs/evaluation-final.json`: 8/8 structural cases passed.
-- `node --check src/relationship_agent/web/app.js`: passed.
-- Editable package installation with the optional MCP extra: passed.
-- Browser smoke check on `http://127.0.0.1:8765`: two live GLM-5.3 chat turns displayed; the second turn honored a request to listen without advice; reloading preserved both turns.
-- A synthetic live GLM-5.3 case completed extraction, hypotheses, actions, private rehearsal, and feedback revision in the browser. One format repair was needed during the four-stage analysis. A generated clarification question appeared as hypothesis support; the support contract was then tightened to require an exact user-account quote. That final contract change passed local tests but was not followed by another paid live analysis.
-- One short direct GLM-5.3 chat request confirmed the official Chat Completions endpoint and JSON reply contract. No batch live evaluation was run. The current local server was restarted with a 12-attempt cap to preserve the remaining test budget.
-- Local API fixture checked both Anthropic Messages and Chat Completions envelopes, auth headers, bounded malformed-output repair and no secret echo.
+- `PYTHONPATH=tests:src .venv/bin/python -m unittest test_harness test_academic test_mcp_integration test_persona test_persona_ops -v`：90项独立测试通过，耗时14.005秒。其中Persona核心36项，运维/MCP3项，旧Harness41项，学术9项，旧MCP1项。
+- `evals/persona_eval.py`：40个中英文两轮案例 × profile_only/person_memory两种变体，共160轮Mock执行成功。对照两组保留同样人物资料，只改变已确认经历是否可检索。
+- `evals/run_eval.py`：原有8/8结构案例通过。性别交换仅验证确定性测试样例，不证明模型公平性。
+- 加密备份恢复使用临时空库，恢复前后对象关联一致；不备份登录令牌；反馈审阅拒绝未获同意的会话。
+- Persona stdio MCP使用真实协议握手与工具调用，绑定单一用户和人物，仅返回已确认事件。
+- 浏览器验证登录、人物创建、回车发送、记忆确认、新对话回忆、刷新恢复、反馈提交、语言切换及移动布局。人物与反馈均为合成测试数据。
+- Python wheel构建、静态页面资源打包、私有数据排除、JavaScript语法检查通过。提交候选文件未检测到常见凭据格式。
+- 模型API请求数：0；真实用户参与数：0；模型建议质量尚未评测。
 
-## What these checks mean
+## 尚未通过验证的部分
 
-They establish code behavior: data layers stay separated, generated rehearsal is excluded from retrieved observations, facts require an input quote, feedback updates an existing hypothesis with a quote, sessions do not leak into one another, model configuration is isolated, failed stages can resume, and the two protocol adapters are wired as expected.
+- PostgreSQL本机启动被系统沙箱共享内存权限拒绝；CI已配置独立数据库测试。
+- 本机没有Docker，容器构建由CI验证。
+- 云平台账号、实际HTTPS部署、生产数据库备份恢复、真实模型与真人评测待完成。
+- 模拟评测文件的`quality_status`为`NOT_EVALUATED`。Mock延迟不代表真实模型延迟。
 
-The Mock evaluation does not establish that GLM gives good relationship advice. It is a deterministic fixture. `quality_status` is deliberately `NOT_EVALUATED` until a human reviews real outputs against the rubric in `evals/cases.json`. The limited live browser checks demonstrate that the workflow executes; they do not establish advice quality or safety across diverse situations.
-
-## Further review
-
-For a small live evaluation after entering an authorized key:
-
-```sh
-read -rs "GLM_API_KEY?Paste your authorized key: "; export GLM_API_KEY; echo
-.venv/bin/python evals/run_eval.py --mode api --model glm-5.3 --protocol chat-completions --limit 2 --output outputs/live-evaluation.json
-```
-
-Inspect the two reports before deciding whether model behavior is good enough. The call consumes API quota and sends the case text to the configured provider.
+详见 [release-status.md](release-status.md)；上线验收与命令见 [deployment.md](deployment.md)。

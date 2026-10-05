@@ -1,5 +1,7 @@
-name: Harness checks
+name: Persona AI verification
 on: [push, pull_request]
+permissions:
+  contents: read
 jobs:
   tests:
     runs-on: ubuntu-latest
@@ -11,7 +13,53 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - run: python -m pip install -e '.[mcp]'
-      - run: python -m unittest discover -s tests -p test_harness.py -v
-      - run: python tests/test_mcp_integration.py
-      - run: python evals/run_eval.py --output outputs/evaluation.json
+      - run: python -m pip install -e '.[beta,mcp,test]'
+      - run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - run: python evals/persona_eval.py --output outputs/persona-eval.json
+      - run: python evals/run_eval.py --output outputs/legacy-eval.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-evals-${{ matrix.python }}
+          path: outputs/*eval.json
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: persona_test
+          POSTGRES_USER: persona_test
+          POSTGRES_PASSWORD: ephemeral-ci-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U persona_test -d persona_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PERSONA_TEST_DATABASE_URL: postgresql+psycopg://persona_test:ephemeral-ci-password@localhost:5432/persona_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e '.[beta,mcp,test]'
+      - run: python -m unittest discover -s tests -p test_persona.py -v
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t persona-ai:test .
+      - run: docker run --rm --entrypoint python persona-ai:test -c "from relationship_agent.beta.app import create_app; from pathlib import Path; import relationship_agent; assert (Path(relationship_agent.__file__).parent / 'persona_web/index.html').is_file()"
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -e '.[beta,test]'
+      - run: python -m playwright install --with-deps chromium
+      - run: python scripts/browser_check.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser-screenshots
+          path: outputs/persona-*.png

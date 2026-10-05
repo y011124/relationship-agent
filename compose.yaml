@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: persona
+      POSTGRES_USER: persona
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a database password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U persona -d persona"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PERSONA_ENV: production
+      DATABASE_URL: postgresql+psycopg://persona:${POSTGRES_PASSWORD}@db:5432/persona
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8770/readyz', timeout=3)"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+  backup:
+    build: .
+    restart: unless-stopped
+    profiles: [backup]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://persona:${POSTGRES_PASSWORD}@db:5432/persona
+    command: ["python", "scripts/backup_loop.py"]
+    volumes:
+      - encrypted_backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+  proxy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      PERSONA_DOMAIN: ${PERSONA_DOMAIN:?Set your domain}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+  encrypted_backups:

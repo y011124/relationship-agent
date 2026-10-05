@@ -12,3 +12,7 @@ outputs/
 dist/
 build/
 .DS_Store
+backups/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm

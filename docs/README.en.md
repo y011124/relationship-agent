@@ -1,56 +1,33 @@
-# ylune · Relationship Agent
+# Persona AI
 
-A local, bilingual app for ongoing emotional conversation and thinking through relationship uncertainty. Users can chat first, request a structured analysis when useful, practise a conversation, and return with real feedback. The workflow separates user accounts, model judgments and imagined dialogue.
+A relationship conversation assistant that remembers the people and experiences you choose to save.
 
-## Run
+**Status:** local invite-beta implementation. Public hosting, live-model quality review and real-user studies remain pending. Mock evaluation is not evidence of advice quality.
 
-Python 3.10+; the core application has no third-party runtime dependencies.
+## Start
 
-```sh
-python3 web_app.py
-```
-
-Open http://127.0.0.1:8765. Choose English before creating a new conversation. The chat panel supports ongoing conversation; the situation panel runs the structured analysis. Demo mode uses deterministic fixtures; it does not understand arbitrary situations. Configure an authorized API key in Model settings for real conversation and analysis.
-
-The provider presets are GLM (`glm-5.3`) and OpenAI GPT (`gpt-4.1-mini`, `https://api.openai.com/v1`). GPT requires a separate OpenAI API key. Supported protocols: Anthropic Messages and Chat Completions. For GLM-5.3, Chat Completions is the recommended default because the official documentation says some Coding Plan users can only access the model API through it. Model ID, endpoint and key can change at runtime. Keys remain in server memory and are never returned in API responses, persisted in the database, or placed in browser storage. Restarting requires reconfiguration or an environment variable. A local cap allows 20 model request attempts per server start by default; the badge shows remaining local attempts, not account balance.
-
-When a user asks for papers or evidence, the unified chat route selects the `evidence` workflow. It prepares a short topic query, searches Semantic Scholar and OpenAlex directly, and searches Google Scholar through SerpAPI (set `SERPAPI_API_KEY`). `SEMANTIC_SCHOLAR_API_KEY` and `OPENALEX_API_KEY` are optional. Results are deduplicated and only clearly labelled abstract or search-snippet text is passed to the knowledge answer stage; provider status, citations and links are shown in the UI. The adapter does not scrape Google Scholar pages, and provider keys stay in server memory.
-
-Every submitted message and successful reply is stored in the local SQLite database, alongside analysis, feedback and traces. There is no automatic expiry, account sync or in-app deletion yet. Only the latest 12 completed chat pairs within a 10,000-character budget are sent as conversation context; storage is broader than what the model sees on each turn.
-
-```sh
+```bash
 python3 -m venv .venv
-.venv/bin/pip install -e .
-.venv/bin/python run_experiment.py --mode mock --language en \
-  --message "We broke up and he hasn't contacted me. I wonder if he has someone else." \
-  --output outputs/demo.json
+.venv/bin/pip install -e '.[beta,mcp,test]'
+.venv/bin/python persona_app.py
 ```
 
-Use --mode api with --model, --base-url, --protocol and --api-key-env to configure a real provider. A normal analysis makes four stage calls, and feedback makes one; bounded retries may add calls.
+Open http://127.0.0.1:8770/, switch to English, create an account and add a person. Only the nickname is required. Accounts and confirmed person memories are independent; legacy local data is never auto-assigned.
 
-## Engineering features
+To configure a model, run `.venv/bin/python scripts/configure_model.py`, enter an authorized key locally, then restart. The script writes an ignored, mode-0600 `.env`; users do not see provider settings.
 
-- Literal evidence-quote validation and typed JSON contracts.
-- Session-scoped, bounded observation retrieval; simulation never becomes evidence.
-- SQLite transactions, checkpoints, stable run IDs and resume without repeating successful stages.
-- Feedback changes identified hypotheses with provenance and preserved version history.
-- Bilingual chat UI, restored sessions, readable result cards and execution records.
-- Bounded academic evidence search across Semantic Scholar, OpenAlex and a SerpAPI Google Scholar adapter, with provider status and citation provenance.
-- Optional real MCP stdio server, scoped to an explicit session, exposing two read-only tools.
+## What is implemented
 
-This is a bounded workflow, not an autonomous planner or multi-agent system. Reported observations are not independently verified facts. Substring validation cannot establish semantic truth. The local server is for a single user and is not a public deployment architecture.
+One checkpointed agent workflow with person profiles, confirmed event memory, bounded retrieval, source-aware answers, optional academic search and rehearsal. User accounts use opaque HttpOnly sessions, scrypt password hashing, CSRF and origin checks. Each resource is authorized on the server. Durable jobs support leases, idempotency and resume; budgets count every actual model attempt, including retries.
 
-## Verification
+Retrieval uses registered names/aliases and scoped lexical ranking, not vectors. Character creation means profiles of people, not independent autonomous agents or accurate digital replicas. Astrology is metadata, not behavioral evidence. Simulations are not real events.
 
-```sh
-.venv/bin/python -m unittest discover -s tests -p test_harness.py -v
-.venv/bin/pip install -e '.[mcp]'
-.venv/bin/python tests/test_mcp_integration.py
-.venv/bin/python evals/run_eval.py --output outputs/evaluation.json
-```
+Correction invalidates old conversational context. Deletion conservatively removes related chats to prevent deleted information from being reused. This trades continuity for clear memory control; the UI explains the consequence before deletion.
 
-The eight evaluation cases include bilingual uncertainty, gender swaps, no-contact boundaries, injection attempts and threats. Mock checks establish engineering invariants only. Reports mark response quality NOT_EVALUATED until reviewed against each case's human rubric. Live GLM evaluation requires an authorized key and consumes quota.
+## Evidence and remaining work
 
-The database is local plaintext at memory/v2/sessions.sqlite3. Personal data, outputs, environment files and virtual environments are ignored by Git. Older v0.1 JSONL data is preserved and not imported, because earlier demo outputs were mixed with observations.
+Run `python -m unittest discover -s tests -p 'test_*.py' -v` and `python evals/persona_eval.py`. Forty synthetic bilingual multi-turn cases compare chat-only and person-memory variants. Human ratings remain blank until reviewed. Local QA users and UI feedback are synthetic.
 
-See [architecture](architecture.md), [verification](verification.md), and the [Chinese guide](../README.md) for the CLI feedback/resume commands and MCP setup.
+Production requires PostgreSQL, HTTPS, an invitation code, server-side model credentials, configured model prices, a privacy contact, validated backups and completed launch checks. Deployment manifests and CI are supplied; no paid cloud account has been created or charged.
+
+See [deployment](deployment.md), [architecture](persona-architecture.md), [evaluation](evaluation.md), and [release status](release-status.md).

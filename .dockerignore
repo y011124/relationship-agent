@@ -1,0 +1,10 @@
+.git
+.venv
+.idea
+.env
+.env.*
+memory
+outputs
+backups
+__pycache__
+*.pyc

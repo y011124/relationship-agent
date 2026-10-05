@@ -1,0 +1,54 @@
+# Paid resources; review the selected region and plans before deploying.
+# Render supplies HTTPS and an onrender.com subdomain; a custom domain is optional.
+services:
+  - type: web
+    name: persona-ai
+    runtime: docker
+    plan: starter
+    region: singapore
+    healthCheckPath: /readyz
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: persona-db
+          property: connectionString
+      - key: PERSONA_ENV
+        value: production
+      - key: PERSONA_MODE
+        value: api
+      - key: PERSONA_ORIGIN
+        sync: false
+      - key: PERSONA_INVITE_CODE
+        generateValue: true
+      - key: PERSONA_API_KEY
+        sync: false
+      - key: PERSONA_PROVIDER_LABEL
+        sync: false
+      - key: PERSONA_PRIVACY_CONTACT
+        sync: false
+      - key: RELATIONSHIP_MODEL
+        value: glm-5.3
+      - key: RELATIONSHIP_PROTOCOL
+        value: chat-completions
+      - key: RELATIONSHIP_BASE_URL
+        value: https://open.bigmodel.cn/api/paas/v4
+      - key: PERSONA_INPUT_USD_PER_MILLION
+        sync: false
+      - key: PERSONA_OUTPUT_USD_PER_MILLION
+        sync: false
+      - key: PERSONA_REQUEST_RESERVE_USD
+        sync: false
+      - key: PERSONA_DAILY_BUDGET_USD
+        value: '2'
+      - key: PERSONA_USER_DAILY_CALLS
+        value: '40'
+      - key: PERSONA_GLOBAL_DAILY_CALLS
+        value: '200'
+databases:
+  - name: persona-db
+    plan: basic-256mb
+    region: singapore
+    postgresMajorVersion: '17'
+    databaseName: persona
+    user: persona
+    ipAllowList: []

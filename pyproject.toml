@@ -4,22 +4,25 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "relationship-agent"
-version = "0.2.0"
-description = "Local bilingual relationship reasoning app with an evidence-aware harness"
+version = "0.3.0"
+description = "Persona AI: person-aware relationship memory with a checkpointed agent harness"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
 mcp = ["mcp>=1.20,<2"]
+beta = ["fastapi==0.142.2", "sqlalchemy==2.0.54", "psycopg[binary]==3.3.6", "uvicorn==0.53.0", "python-dotenv==1.2.3", "cryptography==50.0.1"]
+test = ["httpx==0.28.1", "playwright==1.63.0"]
 
 [project.scripts]
 relationship-agent = "relationship_agent.cli:main"
 relationship-agent-web = "relationship_agent.server:main"
 relationship-agent-mcp = "relationship_agent.mcp_server:main"
+persona-ai = "relationship_agent.beta.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-relationship_agent = ["web/*.html", "web/*.js", "web/*.css"]
+relationship_agent = ["web/*.html", "web/*.js", "web/*.css", "persona_web/*.html", "persona_web/*.js", "persona_web/*.css"]
