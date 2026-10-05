@@ -6,8 +6,18 @@ import time
 import uuid
 from pathlib import Path
 import sys
+import traceback
 import httpx
 from playwright.sync_api import sync_playwright, expect
+
+def report_failure(kind,value,tb):
+    traceback.print_exception(kind,value,tb)
+    if os.getenv('GITHUB_ACTIONS')=='true':
+        # Only disposable synthetic fixtures run here; make CI failures visible in check annotations.
+        detail=''.join(traceback.format_exception(kind,value,tb))[-10000:]
+        print('::error title=Browser regression::'+detail.replace('%','%25').replace('\r','%0D').replace('\n','%0A'))
+
+sys.excepthook=report_failure
 
 with tempfile.TemporaryDirectory() as d:
     env={**os.environ,'DATABASE_URL':'sqlite:///'+d+'/browser.sqlite','PERSONA_ENV':'development','PERSONA_MODE':'mock','PERSONA_ORIGIN':'http://127.0.0.1:8879','PERSONA_INVITE_CODE':''}
@@ -31,7 +41,7 @@ with tempfile.TemporaryDirectory() as d:
             page.locator('#add-person').click();page.locator('#person-form [name=nickname]').fill('小林');page.locator('#person-form button[type=submit]').click()
             expect(page.locator('#person-title')).to_have_text('小林');page.locator('#talk-person').click()
             page.locator('#message-input').fill('小林昨天取消约会，我有点失望。');page.locator('#message-input').press('Enter')
-            page.get_by_role('button',name='查看并确认',exact=True).click(timeout=10000);page.locator('#event-form button[type=submit]').click()
+            page.locator('.memory-card').get_by_role('button',name='查看并确认',exact=True).click(timeout=10000);page.locator('#event-form button[type=submit]').click()
             expect(page.locator('.memory-card')).to_have_count(0)
             page.locator('#new-chat').click();page.locator('#message-input').fill('小林之前做过什么？');page.locator('#send').click()
             expect(page.locator('#messages')).to_contain_text('你之前确认记录过',timeout=10000)
