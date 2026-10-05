@@ -31,3 +31,7 @@ Run `python -m unittest discover -s tests -p 'test_*.py' -v` and `python evals/p
 Production requires PostgreSQL, HTTPS, an invitation code, server-side model credentials, configured model prices, a privacy contact, validated backups and completed launch checks. Deployment manifests and CI are supplied; no paid cloud account has been created or charged.
 
 See [deployment](deployment.md), [architecture](persona-architecture.md), [evaluation](evaluation.md), and [release status](release-status.md).
+
+## Verification
+
+90 independent local tests passed. [GitHub CI](https://github.com/y011124/relationship-agent/actions/runs/37314361389) passed on Python 3.10/3.12, PostgreSQL 17, Docker and Chromium browser flows. All fixtures are synthetic; no live-model quality or real-user outcome is claimed.

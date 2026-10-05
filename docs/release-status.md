@@ -11,7 +11,7 @@
 | 3 人物档案 | 创建/编辑/删除，昵称/别名/关系/可选资料/印象，时间线与来源 | 本地实现与测试通过 |
 | 4 聊天记忆 | 人物解析、待确认卡片、跨会话检索、纠正失效、删除清理 | 本地实现与测试通过；语义质量待真实模型评测 |
 | 5 Agent/Harness | 复用阶段引擎、数据库队列、租约、幂等、预算、来源分层、MCP | 本地工程验证通过；不宣称自主多Agent |
-| 6 上线基础 | 登录/隔离/FastAPI/PostgreSQL支持/容器/Compose/Render/CI | SQLite本机通过；PostgreSQL运行与云部署待验证 |
+| 6 上线基础 | 登录/隔离/FastAPI/PostgreSQL支持/容器/Compose/Render/CI | SQLite本机、PostgreSQL CI与容器构建通过；云部署待验证 |
 | 7 质量与隐私 | 安全预检、数据说明、删除/导出、加密备份恢复、反馈同意 | 功能已实现；生产配置与模型安全质量尚待审查 |
 | 8 评测 | 40个中英文多轮案例，有/无人物记忆对照、工程回归 | Mock流程通过；真人评分与真实模型结果待补 |
 | 9 实施与运营 | 部署指南、运营工具、反馈协议、故障方法、演示脚本 | 材料已准备；云账号、模型配置与用户招募未完成 |
@@ -25,6 +25,7 @@
 - 40个合成案例×2种记忆变体×2轮＝160轮Mock流程执行成功，quality_status=NOT_EVALUATED。
 - 浏览器人工自动化验证：登录、人物创建、回车发送、待确认卡片、确认保存、跨会话记忆、刷新恢复、反馈入口/提交、中英文切换。
 - 桌面1360×880布局已目视查看；移动布局已在内置浏览器检查。最终日志和剩余回归结果见verification.md。
+- GitHub CI全部通过：Python 3.10/3.12完整回归、PostgreSQL 17核心测试、Docker构建及包内页面检查、独立浏览器闭环。证据：[https://github.com/y011124/relationship-agent/actions/runs/37314361389](https://github.com/y011124/relationship-agent/actions/runs/37314361389)，应用代码提交85d1181。
 - 未使用任何付费模型额度；模型Key尚未配置到本次运行环境。
 
 这些都是工程/合成验证，不是模型建议质量认证。演示账号persona_demo里的内容与评价均为测试数据；真实参与用户=0。
@@ -33,13 +34,13 @@
 
 1. 用户确认没有云托管账号或域名。已提供Render和自托管材料，但未创建/支付任何云资源。公网网址不存在。
 2. 当前运行环境没有PERSONA_API_KEY/GLM_API_KEY，也没有项目.env，未执行真实模型回归。提供隐藏输入配置工具和最多4次调用的live_smoke.py。
-3. 本机没有Docker或PostgreSQL。为验证尝试启动临时PostgreSQL，initdb被系统沙箱的共享内存权限拒绝（shmget Operation not permitted）。这属于环境阻塞，不能报告PostgreSQL通过。CI中有独立Postgres服务测试。
-4. Docker容器构建和Render Blueprint尚未在对应平台执行。实际部署费用、地域、存储备份与HTTPS必须现场确认。
+3. 本机没有Docker或PostgreSQL。为验证尝试启动临时PostgreSQL，initdb被系统沙箱的共享内存权限拒绝（shmget Operation not permitted）。本机测试仍受阻；随后GitHub CI中的独立PostgreSQL 17测试已通过，生产数据库的实际备份恢复仍待验收。
+4. Docker容器构建已在GitHub CI通过；Render Blueprint尚未在平台执行。实际部署费用、地域、存储备份与HTTPS必须现场确认。
 5. 10–20位真实用户需要同意与招募；系统已具备反馈入口，但没有伪造用户评价或满意度。
 
 ## 上线前剩余动作
 
-- 本人注册托管账号，选择地区和预算；通过CI并部署，现场检查模板设置。
+- 本人注册托管账号，选择地区和预算；基于已通过CI的代码部署，现场检查模板设置。
 - 本地/托管Secret中配置有效模型Key、模型价格、邀请码、隐私联系渠道。
 - 运行小额真实模型闭环，人工审阅案例，修复发现的问题。
 - 验证生产PostgreSQL的隔离、重启恢复、预算与备份恢复；访问公网HTTPS地址验收。

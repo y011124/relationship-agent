@@ -59,6 +59,8 @@ python3 -m venv .venv
 
 ## 测试和评测
 
+90项独立本地回归通过；[GitHub CI](https://github.com/y011124/relationship-agent/actions/runs/37314361389)的双Python版本、PostgreSQL、Docker与浏览器检查全部通过。真实模型与真人反馈仍待完成。
+
 ```bash
 .venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v
 .venv/bin/python evals/persona_eval.py
